@@ -6,55 +6,90 @@ import iconPerson from './images/icon-person.svg'
 
 function App() {
 
-  const [tipAmountPP, setTipAmountPP] = useState<Number>(0)
-  const [totalPP, setTotalPP] = useState<Number>(0)
-  const [bill, setBill] = useState<Number>(0)
-  const [tipPercent, setTipPercent] = useState<Number>(0)
-  const [numOfPeople, setNumOfPeople] = useState<Number>(0)
-  const [selectedButton, setSelectedButton] = useState<Number>(-1);
-
+  const [tipAmountPP, setTipAmountPP] = useState<number>(0);
+  const [totalPP, setTotalPP] = useState<number>(0);
+  const [bill, setBill] = useState<number>(0);
+  const [tipPercent, setTipPercent] = useState<number>(0);
+  const [tipPercentButton, setTipPercentButton] = useState<number>(0);
+  const [numOfPeople, setNumOfPeople] = useState<number>(0);
+  const [selectedButton, setSelectedButton] = useState<number>(-1);
+  const [isResetButtonEnabled, setIsResetButtonEnabled] = useState(false);
 
   useEffect(() => {
-    handleCalculations();
-  }, [bill, numOfPeople, tipPercent]);
+    calculateTip();
+    validateInputs();
+  }, [bill, tipPercent, tipPercentButton, numOfPeople]);
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    switch (name) {
+      case 'bill':
+        let billVal = parseFloat(value)
+        setBill(isNaN(billVal) ? 0 : billVal);
+        break;
+      case 'tipPercent':
+        let tipVal = parseFloat(value)
+        setTipPercent(isNaN(tipVal) ? 0 : tipVal);
+        setSelectedButton(-1); // Reset selected button when custom tip is used
+        break;
+      case 'numOfPeople':
+        let numVal = parseInt(value)
+        setNumOfPeople(isNaN(numVal) ? 1 : numVal); //Reset to 1 to take care of validation
+        break;
 
-    const { name, value } = event.target;
-    let numVal = Number(value)
-    if (name === 'bill') {
-      setBill(numVal);
-    } else if (name === 'numOfPeople') {
-
-      setNumOfPeople(numVal);
     }
-    else if (name === 'tipPercent') {
-      setTipPercent(numVal);
-    }
+
 
   };
 
-  const handleButtonClick = (val: number, event: React.MouseEvent<HTMLButtonElement>) => {
-    event?.preventDefault();
-    setSelectedButton(val);
-    setTipPercent(val);
 
-  }
-  const buttonBgClass = (val: number) =>
-    `w-full  text-white py-2 px-4 rounded-md  ${val === Number(selectedButton) ? 'bg-emerald-500' : 'bg-custom-very-dark-cyan'}`
+  const validateInputs = () => {
+    setIsResetButtonEnabled(
+      bill !== 0 && numOfPeople !== 0
+    );
+  };
 
 
-  const handleCalculations = () => {
-    let totalAmount = Number(bill) / Number(numOfPeople)
-    let tipAmount = totalAmount * (Number(tipPercent) / 100)
-    setTotalPP(totalAmount + tipAmount);
-    setTipAmountPP(tipAmount)
-  }
+  const handleButtonClick = (percent: number, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault(); // Prevent form submission
+    setTipPercentButton(percent);
+    setTipPercent(0);
+    setSelectedButton(percent);
+  };
 
-  const resetValues = () => {
-    setTotalPP(0);
+  const buttonBgClass = (percent: number) => {
+    return `rounded-md py-2 px-4 ${selectedButton === percent ? 'bg-emerald-500' : 'bg-gray-100'} hover:bg-emerald-500 focus:outline-none`;
+  };
+
+  const calculateTip = () => {
+    // Handle invalid inputs to prevent NaN and Infinity
+    if (isNaN(bill) || isNaN(tipPercent) || numOfPeople === 0) {
+      setTipAmountPP(0.00);
+      setTotalPP(0.00);
+      return; // Exit the function if inputs are invalid
+    }
+
+    let tipPercentage = 0;
+    if (selectedButton == -1)
+      tipPercentage = tipPercent;
+    else
+      tipPercentage = tipPercentButton
+
+    const tipAmount = (bill * (tipPercentage / 100)) / numOfPeople;
+    const total = (bill / numOfPeople) + tipAmount;
+    setTipAmountPP(tipAmount);
+    setTotalPP(total);
+  };
+
+  const handleReset = () => {
+    setBill(0);
+    setTipPercent(0);
+    setNumOfPeople(0);
+    setSelectedButton(-1); // Reset button selection
     setTipAmountPP(0);
-  }
+    setTotalPP(0);
+    setIsResetButtonEnabled(false);
+  };
 
   return (
     <div className="container mx-auto py-4 min-h-screen 
@@ -97,7 +132,7 @@ function App() {
               <button className={buttonBgClass(50)}
                 onClick={(e) => handleButtonClick(50, e)}
               >50%</button>
-              <input type="text" name='tipPercent' id='tipPercent' className="w-full bg-gray-100 text-custom-very-dark-cyan py-2 px-4 rounded-md hover:outline-emerald-500 hover:outline-2 hover:outline-double hover:cursor-pointer" placeholder='Custom' onChange={handleChange} />
+              <input type="text" name='tipPercent' id='tipPercent' value={tipPercent} className="w-full bg-gray-100 text-custom-very-dark-cyan py-2 px-4 rounded-md hover:outline-emerald-500 hover:outline-2 hover:outline-double hover:cursor-pointer" placeholder='Custom' onChange={handleChange} />
             </div>
 
           </div>
@@ -133,7 +168,10 @@ function App() {
             </div>
           </div>
           {/* Reset button */}
-          <button type="reset" className='w-full rounded-md bg-emerald-500 text-custom-very-dark-cyan p-2 ' onClick={() => resetValues()}>RESET</button>
+          <button type="reset" className={`w-full rounded-md bg-emerald-500 text-custom-very-dark-cyan p-2 transition ease-in-out duration-100 ${isResetButtonEnabled ? 'hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 active:bg-emerald-700'
+           : 'opacity-50 cursor-not-allowed'
+            }`}
+            disabled={!isResetButtonEnabled} onClick={() => handleReset()}>RESET</button>
 
         </div>
       </form>
